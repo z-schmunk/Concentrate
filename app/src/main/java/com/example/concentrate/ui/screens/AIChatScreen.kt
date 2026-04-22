@@ -3,29 +3,37 @@ package com.example.concentrate.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.concentrate.data.ChatViewModel
+import kotlinx.coroutines.launch
 
 data class Message(val text: String, val isUser: Boolean)
 
 @Composable
-fun AIChatScreen() {
+fun AIChatScreen(viewModel: ChatViewModel = viewModel()) {
     var inputText by remember { mutableStateOf("") }
-    val messages = remember { mutableStateListOf(Message("Hi! I'm your ONU Major Assistant. How can I help you today?", false)) }
+    val context = LocalContext.current
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .padding(16.dp),
             reverseLayout = false
         ) {
-            items(messages) { message ->
+            items(viewModel.messages) { message ->
                 ChatBubble(message)
             }
         }
@@ -44,10 +52,11 @@ fun AIChatScreen() {
             )
             IconButton(onClick = {
                 if (inputText.isNotBlank()) {
-                    messages.add(Message(inputText, true))
-                    // Mock AI response for now
-                    messages.add(Message("That's a great question about " + inputText.take(10) + "... I'll be able to help more once my Gemini integration is complete!", false))
+                    viewModel.sendMessage(inputText, context)
                     inputText = ""
+                    coroutineScope.launch {
+                        listState.animateScrollToItem(viewModel.messages.size)
+                    }
                 }
             }) {
                 Icon(Icons.Default.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
